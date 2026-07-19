@@ -1,104 +1,132 @@
-# Verdict — don't get played on Marketplace
+<div align="center">
 
-**Run this before you drive out or send a cent.** Upload any used listing's photos and the asking price —
-car, phone, couch, sneakers — and Verdict inspects it like a pro: the **fair price**, what's **wrong with
-it**, and whether it's a **scam**. In 60 seconds.
+# ⚖️ Verdict
 
-Built at the Stanford × DeepMind "Build with Google Gemini" hackathon (Jul 19, 2026). One engine, any item;
-cars are the flagship vertical (with real comps), and the same pipeline generalizes across Marketplace.
+### Point your camera at any used listing. Get a fair-price verdict, photo-grounded defects, and a scam read — in ~60 seconds.
+
+*The model perceives. The code prices.*
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![Built with Google Gemini](https://img.shields.io/badge/Built%20with-Google%20Gemini-4285F4?logo=googlegemini&logoColor=white)](https://ai.google.dev/)
+[![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript 5](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite 5](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Runs on Replit](https://img.shields.io/badge/Runs%20on-Replit-F26207?logo=replit&logoColor=white)](https://replit.com/)
+
+**[▶ Run it on Replit](https://replit.com/github/vnmoorthy/verdict)** · [Gemini setup](./AISTUDIO.md) · [Report a bug](../../issues)
+
+</div>
+
+---
+
+> _📸 Screenshot / GIF goes here — drop a `docs/demo.gif` and reference it: `![Verdict in action](docs/demo.gif)`_
+
+---
+
+## Why Verdict exists
+
+Buying used is a market for "lemons." In [Akerlof's classic problem](https://en.wikipedia.org/wiki/The_Market_for_Lemons), the seller knows the item's flaws and the buyer doesn't — so the buyer either overpays or walks, and honest sellers get punished by the same suspicion as dishonest ones. Facebook Marketplace, Craigslist, and OfferUp turned that asymmetry into a daily tax: stock photos, vague descriptions, "firm on price," and outright scams.
+
+Verdict narrows the gap. It looks at the **same photos the seller posted** and gives the buyer an appraiser's read — what it's worth, what's wrong with it, and whether the listing smells like a scam — before they message the seller or drive across town.
 
 ## What it does
 
-1. **Perception** — Gemini multimodal reads 1-8 listing photos (+ optional listing text) and returns
-   structured findings: the item, defects with severity + calibrated confidence + a bounding region, and a
-   realistic used-resale price range.
-2. **Verify** — an adversarial second pass re-examines every material finding and drops unsupported ones.
-3. **Scam & authenticity** — flags the classic Marketplace tells: price far below market (deterministic,
-   computed in code), stock/press-looking photos, missing verification shots, deposit/shipping-only
-   patterns → a risk level with specific signals.
-4. **Valuation** — deterministic math in code, never the model's guess: cars use median comps + mileage
-   adjustment + per-finding attribution; other items use the model's fair range with its reasoning shown.
-5. **Negotiation** — opening offer, target price, and a copy-paste script seeded with the strongest findings.
+Upload a listing's photos (add the asking price and description if you have them). Verdict returns three things:
 
-Honesty rails: built-in samples are stamped **"Sample report"**; your own photos only ever run through live
-Gemini (never canned results); a high-scam item never renders as a green "great deal" (the low price is
-framed as bait); photos that aren't a sellable item are rejected, not invented into a fake report; and the
-report states what photos can't show (engine internals, structural damage).
+1. **⚖️ A fair-price verdict** — a realistic used-resale range (low / typical / high) and a plain call: **overpriced**, **fair**, or **a deal**, with a suggested opening offer.
+2. **🔍 Condition defects, grounded to the photos** — each flaw is tied to the specific image and a bounding box in it (repainted panel, curb rash, screen burn-in, missing parts), with a severity, a calibrated confidence, and the dollar impact on value.
+3. **🚩 A scam / authenticity read** — signals like price-too-good-to-be-true anomalies, counterfeit tells, and stock-photo hints, rolled up into a low / medium / high risk with a one-line takeaway.
+
+All of it in roughly a minute.
+
+## 60-second Quickstart
+
+```bash
+git clone https://github.com/vnmoorthy/verdict.git
+cd verdict
+npm install
+npm run dev
+```
+
+Open the local URL Vite prints (default http://localhost:5173).
+
+- **DEMO mode is the default and needs no API key** — it runs the full flow on bundled sample listings so you can see exactly what Verdict produces.
+- **LIVE mode** inspects your own photos. Paste a Google Gemini API key into the app (get one free at [Google AI Studio](https://aistudio.google.com/apikey)). The key is stored **only in your browser's `localStorage`** and is sent directly to Google — see [AISTUDIO.md](./AISTUDIO.md) for setup and the production-proxy note.
+
+## How it works
+
+`the model perceives, the code prices`
+
+```
+photos ──▶ 1. PERCEIVE ──▶ 2. VERIFY ──▶ 3. PRICE + SCORE ──▶ 4. REPORT
+           (Gemini vision)  (calibrate)   (deterministic code)  (verdict)
+```
+
+1. **Perceive.** Gemini `gemini-3.5-flash` identifies the item and returns structured JSON: findings with photo index + bounding box, authenticity signals, and a raw fair-price range. Images are downscaled client-side before upload to keep inference fast.
+2. **Verify.** Severities, confidences, and risk levels are normalized and sanity-checked so a stray or malformed field can't corrupt the result.
+3. **Price & score — in code, not in the prompt.** The dollars are computed **deterministically in TypeScript**, not asked of the model: base value minus per-finding price impacts (`computeValuation`), an opening offer and negotiation talking points (`computeNegotiation`), and a price-anomaly scam signal that fires when the ask is implausibly below fair value (`priceAnomalySignal`, `maxRisk`). Same inputs → same numbers, every time. The model's job is to *see*; the code's job is to *decide*.
+4. **Report.** Findings render as annotated boxes over the original photos, next to the verdict, the price range, and the scam summary.
+
+**It refuses to make things up.** If the photos aren't a sellable item, Verdict stops rather than inventing an appraisal — it returns _"Couldn't read these photos as a sellable item. Try clearer, in-hand photos of one item."_ (`src/gemini.ts`). No item, no verdict.
 
 ## Built with
 
-### Google AI Studio · Gemini
-Verdict's perception runs on **Google Gemini** (`gemini-3.5-flash`), accessed through the **Google
-AI Studio** API. We prototyped and tuned the inspection prompts in AI Studio's playground, then call
-the Gemini API at runtime via `@google/genai` for multimodal photo analysis + an adversarial verify
-pass. Pricing and negotiation are deterministic TypeScript — the model perceives, the code prices.
-See [`AISTUDIO.md`](AISTUDIO.md) for the exact prompts, model config, and how to reproduce them in AI Studio.
+- **[Google Gemini](https://ai.google.dev/) (`gemini-3.5-flash`)** via **[Google AI Studio](https://aistudio.google.com/apikey)** and the `@google/genai` SDK — vision perception with strict JSON output. Full setup and key handling: **[AISTUDIO.md](./AISTUDIO.md)**.
+- **[Replit](https://replit.com/)** — ships as a static build (`.replit` configured for `deploymentTarget = "static"`, `publicDir = "dist"`). Import the repo and hit Run.
 
-### Replit
-Verdict is a first-class **Replit** project — the included `.replit` config means you import the repo,
-hit **Run** (Vite dev preview), and **Deploy → Static** to ship the live app, no extra setup. The
-Gemini key is set via Replit **Secrets** (`VITE_GEMINI_API_KEY`), or each visitor pastes their own in-app.
+## Honest limitations
 
-### About the STANFORDDEEP code
-`STANFORDDEEP` is the hackathon **promo / credit code** — redeemed **on the platform** (Replit / Google
-Cloud credits) to run and deploy the project. It's a billing credit, not part of the app: it is not
-hardcoded, embedded, or referenced anywhere in the source.
+Verdict is a **photo screen, not a full inspection.** Read it that way:
 
-## Run it
+- **It only knows what the photos show.** No test drive, no OBD scan, no powering the device on, no touching or smelling the item. A clean-looking listing can still hide a bad engine, water damage, or a worn battery.
+- **It is not provenance or a title/VIN check.** It does not verify ownership, liens, accident history, or serial numbers against any database.
+- **It does not do reverse-image search.** It can flag "this looks like a stock photo," but it cannot prove an image was lifted from elsewhere on the web.
+- **Prices are estimates, not appraisals.** They reflect general used-resale patterns, not your exact local market on a given day.
+- **Confidence is a signal, not a guarantee.** Low-confidence findings are surfaced as "needs more angles," not hidden. Always confirm in person before paying.
 
-```bash
-npm install
-npm run dev        # http://localhost:5173
-```
+Use it to walk in informed and negotiate — not as the final word.
 
-Zero-setup path: click **"Sample: used car"** (comps-grounded $4,150 overpay report) or
-**"Sample: Marketplace scam"** (a high-scam iPhone listing) — both deterministic, no key needed.
+## Tech stack
 
-Live path (inspect your own car): open **Settings**, paste a Gemini API key
-(get one at https://aistudio.google.com/apikey — stored only in your browser's localStorage),
-then add photos + asking price and hit **Inspect this car**.
+| Layer | Choice |
+|---|---|
+| Build | Vite 5 |
+| UI | React 18 + TypeScript 5 |
+| AI | Google Gemini `gemini-3.5-flash` via `@google/genai` |
+| Pricing / scam logic | Deterministic TypeScript (no server) |
+| Deploy | Static build → Replit (or any static host) |
 
-Optionally put a key in `.env` for local dev (see `.env.example`). Note: a `VITE_` var ships to the
-browser bundle — fine for a demo build; production should proxy Gemini behind a backend.
+Zero backend. The app is a single-page client; your Gemini key and photos go straight from your browser to Google.
 
-## Deploy (static)
-
-```bash
-npm run build      # typecheck + production bundle in dist/
-```
-
-### Replit (the hackathon host)
-This repo is Replit-ready (`.replit` included):
-1. Replit → **Create App → Import from GitHub** → paste the repo (open the `verdict/` folder as the workspace).
-2. Hit **Run** — the Vite dev preview opens on the `*.replit.dev` URL (`vite.config.ts` already allows the Replit proxy host).
-3. Set your key: **Tools → Secrets → `VITE_GEMINI_API_KEY`** (or skip it and paste a key in-app).
-4. **Deploy → Static** — build `npm run build`, public dir `dist`. Ships to a `*.replit.app` URL.
-
-### Other static hosts
-
-- **Vercel**: `npx vercel deploy dist --prod` (or drag `dist/` into vercel.com/new)
-- **Netlify**: drag `dist/` into app.netlify.com/drop
-- **GitHub Pages**: push, enable Pages on the `dist` output via an action
-
-No server, no env needed for the sample path; live mode keys are user-supplied at runtime.
-
-## Architecture
+## Project structure
 
 ```
-src/
-  types.ts    — Finding / Valuation / Negotiation / VerdictResult
-  data.ts     — comps dataset, valuation + negotiation math (deterministic, in code)
-  engine.ts   — orchestrator: demo path (staged mock) / live path (lazy-loads gemini.ts)
-  gemini.ts   — live pipeline: multimodal perception → JSON findings → verify pass
-  image.ts    — client-side downscale (1280px) before upload
-  App.tsx     — intake (upload + asking price), staged analyzing, report UI
+verdict/
+├─ index.html            # Vite entry
+├─ .replit               # static-deploy config (dist/)
+├─ vite.config.ts
+├─ AISTUDIO.md           # Gemini / AI Studio setup + key handling
+├─ src/
+│  ├─ main.tsx           # React bootstrap
+│  ├─ App.tsx            # UI, upload flow, annotated report
+│  ├─ engine.ts          # orchestrates demo vs. live run
+│  ├─ gemini.ts          # live Gemini call + JSON parsing + non-item refusal
+│  ├─ data.ts            # deterministic valuation, negotiation & scam scoring
+│  ├─ image.ts           # client-side downscaling before upload
+│  ├─ lib.ts             # helpers, key/mode storage
+│  ├─ types.ts           # shared types
+│  └─ index.css
+└─ public/               # sample listing assets
 ```
 
-Design decision worth stealing: **the model perceives, the code prices.** Gemini only ever outputs
-structured observations about what is visible; every dollar figure is deterministic arithmetic over the
-comps dataset with per-finding attribution. That is what makes the output defensible.
+## License
 
-## Disclaimer
+[MIT](./LICENSE) — do what you like, no warranty. Verdict is a decision aid, not professional appraisal, legal, or financial advice.
 
-Verdict is decision support, not a substitute for a professional pre-purchase inspection. Always verify
-title, VIN history, and safety-critical items independently before buying.
+---
+
+<div align="center">
+
+**If Verdict saved you from a lemon — or just made a negotiation less awkward — ⭐ star the repo.** It genuinely helps.
+
+</div>
