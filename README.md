@@ -13,7 +13,7 @@
 [![Vite 5](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Runs on Replit](https://img.shields.io/badge/Runs%20on-Replit-F26207?logo=replit&logoColor=white)](https://replit.com/)
 
-**[▶ Run it on Replit](https://replit.com/github/vnmoorthy/verdict)** · [Gemini setup](./AISTUDIO.md) · [Report a bug](../../issues)
+**[▶ Live demo](https://verdict-vnmoorthy.replit.app)** · [Gemini setup](./AISTUDIO.md) · [Report a bug](../../issues)
 
 </div>
 
