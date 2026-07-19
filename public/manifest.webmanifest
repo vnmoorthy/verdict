@@ -1,0 +1,13 @@
+{
+  "name": "Verdict — Marketplace inspector",
+  "short_name": "Verdict",
+  "description": "Inspect any used listing: fair price, defects, and scam detection in 60 seconds.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

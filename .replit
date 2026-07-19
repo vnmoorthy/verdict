@@ -1,0 +1,12 @@
+modules = ["nodejs-20"]
+
+run = "npm run dev"
+
+[deployment]
+deploymentTarget = "static"
+publicDir = "dist"
+build = ["npm", "run", "build"]
+
+[[ports]]
+localPort = 5173
+externalPort = 80
